@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { Article, Corpus } from "./substack.js";
 import { SubstackSource } from "./substack.js";
 import { ABOUT } from "./links.js";
+import { checkWebsite, renderError } from "./phpcheck.js";
 
 const staleNote = (c: Corpus) =>
   c.stale ? "\n\n_Note: the source refresh failed; this content may be slightly out of date._" : "";
@@ -18,7 +19,7 @@ function excerpt(md: string, query: string): string {
   return `…${md.slice(start, end).replace(/\s+/g, " ")}…`;
 }
 
-export function buildServer(source: SubstackSource): McpServer {
+export function buildServer(source: SubstackSource, fetchFn: typeof fetch = fetch): McpServer {
   const server = new McpServer({ name: "rimas-logic", version: "1.0.0", title: "Rimas Logic" });
   const ok = (text: string) => ({ content: [{ type: "text" as const, text }] });
   const fail = (text: string) => ({ content: [{ type: "text" as const, text }], isError: true });
@@ -89,6 +90,30 @@ export function buildServer(source: SubstackSource): McpServer {
       inputSchema: {},
     },
     async () => ok(ABOUT),
+  );
+
+  server.registerTool(
+    "check_php_security",
+    {
+      title: "Check a website's PHP security",
+      description:
+        "Passively check whether a website looks exposed to a critical or end-of-life PHP problem — notably the " +
+        "October 2026 'php2shell' unauthenticated RCE (CVE-2026-109618 / CVE-2026-109619) and end-of-life PHP " +
+        "branches. It reads ONLY the public HTTP response headers the server already sends to every browser " +
+        "(Server, X-Powered-By, Set-Cookie); it does not probe paths, send payloads, or attempt any exploit. " +
+        "Returns a plain-language risk report with concrete next steps and how to get help from Rimas Logic. " +
+        "Paste the URL of a site you own or are authorised to check, e.g. https://example.com. A banner is an " +
+        "indicator, not proof: distributions backport fixes and versions can be hidden, so verdicts are 'worth verifying', not final.",
+      inputSchema: { url: z.string().min(3).describe("Website URL to check, e.g. https://example.com") },
+    },
+    async ({ url }) => {
+      try {
+        const { report } = await checkWebsite(url, fetchFn);
+        return ok(report);
+      } catch (err) {
+        return fail(renderError(url, err));
+      }
+    },
   );
 
   return server;

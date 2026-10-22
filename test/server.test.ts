@@ -8,9 +8,16 @@ import { buildServer } from "../src/server.js";
 const posts = JSON.parse(readFileSync(new URL("./fixtures/posts.json", import.meta.url), "utf8"));
 const okFetch: typeof fetch = (async () => new Response(JSON.stringify(posts))) as typeof fetch;
 
+// Mock fetch for the PHP checker: a site advertising an end-of-life PHP banner.
+const phpFetch: typeof fetch = (async (url: string) => {
+  const res = new Response(null, { status: 200, headers: new Headers({ "x-powered-by": "PHP/8.1.20" }) });
+  Object.defineProperty(res, "url", { value: typeof url === "string" ? url : "https://example.com/" });
+  return res;
+}) as typeof fetch;
+
 let client: Client;
 beforeEach(async () => {
-  const server = buildServer(new SubstackSource("https://x", 600_000, okFetch));
+  const server = buildServer(new SubstackSource("https://x", 600_000, okFetch), phpFetch);
   client = new Client({ name: "test", version: "0.0.0" });
   const [ct, st] = InMemoryTransport.createLinkedPair();
   await Promise.all([server.connect(st), client.connect(ct)]);
@@ -19,10 +26,10 @@ beforeEach(async () => {
 const text = (r: any) => r.content.map((c: any) => c.text).join("\n");
 
 describe("tools", () => {
-  it("lists all four tools", async () => {
+  it("lists all five tools", async () => {
     const { tools } = await client.listTools();
     expect(tools.map((t) => t.name).sort()).toEqual(
-      ["about_the_ai_logic", "get_article", "list_articles", "search_articles"]);
+      ["about_the_ai_logic", "check_php_security", "get_article", "list_articles", "search_articles"]);
   });
 
   it("list_articles returns rows with slug and url", async () => {
@@ -55,5 +62,13 @@ describe("tools", () => {
     const r = await client.callTool({ name: "about_the_ai_logic", arguments: {} });
     const t = text(r);
     for (const s of ["rimaslogic.substack.com", "linkedin.com", "cal.com"]) expect(t).toContain(s);
+  });
+
+  it("check_php_security returns a risk report for a given URL", async () => {
+    const r = await client.callTool({ name: "check_php_security", arguments: { url: "https://example.com" } });
+    const t = text(r);
+    expect(t).toContain("PHP security check");
+    expect(t).toContain("CRITICAL"); // 8.1.20 is end-of-life
+    expect(t).toContain("cal.com"); // Rimas Logic CTA
   });
 });
