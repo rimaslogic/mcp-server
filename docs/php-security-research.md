@@ -139,6 +139,25 @@ the live web is still on 8.1 or older. That is the recurring, sellable problem.
 
 ---
 
+## Appendix — illustrative scan (2026-10-22)
+
+A 10-site pass across well-known Polish company homepages (retail, electronics, media, health, NGO),
+reading **public page content only** (no header access in that run), looking for PHP/CMS fingerprints
+in asset URLs and routes:
+
+- **2 of 10** showed a clear PHP signal — one WordPress (`/wp-content/uploads/` asset paths), one
+  Magento-style storefront (`/customer/account/...` routing). Both are PHP apps and therefore inside
+  php2shell's blast radius; their **patch level could not be seen** from page content.
+- **1 of 10** was bot-blocked (HTTP 403) → indeterminate.
+- **7 of 10** showed no PHP signal — mostly custom/in-house stacks served via CDNs, and one that
+  looked like ASP.NET. "No signal" is **not** proof of safety: a CDN or reverse proxy hides the
+  origin stack, and the PHP version lives in HTTP headers, not the HTML body.
+
+**The lesson this proves:** a real vulnerability read needs the response headers (`Server`,
+`X-Powered-By`) or a local `php -v` — exactly what `check_php_security` uses when it runs from an
+environment with outbound access (the deployed server, or `scripts/scan.mjs` on a trusted machine).
+Content-only fingerprinting can tell you *whether* a site is PHP, not *whether it is patched*.
+
 ## Sources
 
 - The PHP Foundation — security release, 2026-10-21: <https://thephp.foundation/blog/2026/10/21/todays-php-security-release-and-how-were-strengthening-php-security/>
