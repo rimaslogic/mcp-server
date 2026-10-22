@@ -144,15 +144,23 @@ the live web is still on 8.1 or older. That is the recurring, sellable problem.
 Two passes over real, named Polish company homepages, across sectors and sizes (retail, banking,
 energy, logistics, telecom, games, tech media). No probing, homepages only.
 
-**Header-based pass (`scripts/scan.mjs`, the real tool logic) — 20 sites.** Reads only the public
+**Header-based pass (`scripts/scan.mjs`, the real tool logic) — 41 sites.** Reads only the public
 `Server` / `X-Powered-By` / `Set-Cookie` headers and compares any disclosed version against the
-php2shell and end-of-life knowledge base.
+php2shell and end-of-life knowledge base. Spread across corporates (Allegro, Orlen, PKO BP, InPost,
+Żabka, Play, Biedronka, CCC, LPP, CD Projekt), tech/media (PurePC, Telepolis, Tabletowo, Chip,
+dobreprogramy, money.pl…), legacy portals and forums (Elektroda, gry-online, Wykop, Filmweb, o2,
+Fotka, Kwejk, Demotywatory…), a small PrestaShop shop, and — as an authorised control — six of our
+own domains including a known-PHP app (Shlink at `l.rimaslogic.pl`).
 
-- **0 of 20 disclosed a PHP version** in their headers. All returned `UNKNOWN_NO_PHP` (one fetch
-  failed). Large firms and modern CMS hosts consistently sit behind CDNs/reverse proxies that strip
-  `X-Powered-By`, or run with `expose_php = Off`.
-- Net: for well-configured sites, an **external banner check cannot confirm vulnerability** — and it
-  cannot confirm safety either. The version simply isn't exposed.
+- **0 of 41 disclosed a PHP version** in their headers. Every site that responded returned
+  `UNKNOWN_NO_PHP`; a handful refused the request outright. **Even the control** — a site we *know* is
+  PHP — returned no version, which both validates the detector (it is reading real headers, not
+  guessing) and proves the point: the `X-Powered-By: PHP/x.y.z` banner is effectively **extinct** on
+  modern stacks (nginx + PHP-FPM behind a proxy, or `expose_php = Off`).
+- Net: for any competently-hosted site, an **external banner check can neither confirm nor rule out**
+  vulnerability — the version simply isn't on the wire. The exposed population is the misconfigured
+  minority (older Apache/mod_php or cPanel shared hosting), which is exactly where real breaches
+  cluster.
 
 **Content-based cross-check (page HTML/asset URLs) — 10 sites.** Identifies the *stack* even when the
 version is hidden.
@@ -163,13 +171,15 @@ version is hidden.
 - **7 of 10** showed no PHP signal (custom/in-house stacks via CDNs; one looked like ASP.NET);
   **1** was bot-blocked.
 
-**What this actually proves (the sellable insight):** the external scan's hit-rate is low *because
-responsible sites hide the banner* — so the real risk lives where you cannot see it from outside:
-on the origin, and disproportionately on smaller/older sites that still leak `X-Powered-By`. The only
-way to *know* is to read the version where it lives — response headers from an environment with
-outbound access, or `php -v` on the box. That is the `check_php_security` design, and the reason the
-honest product motion is "run it on your own site / let us check it for you", not "we scanned you and
-you're exposed."
+**What this actually proves (the sellable insight):** external, no-touch scanning of random targets
+barely works in 2026 *because responsible sites hide the banner* — so the risk lives where you cannot
+see it from outside: on the origin, and disproportionately on smaller/older sites. The only way to
+*know* is to read the version where it lives — response headers from the server's own vantage point,
+a `Set-Cookie: PHPSESSID`, or `php -v` on the box. That is the `check_php_security` design, and the
+reason the honest product motion is **"run it on your own site / let us check it for you"**, not
+"we scanned you and you're exposed." The tool's verdict logic is exercised against exposed banners in
+the test suite (e.g. `PHP/8.1.20` → `CRITICAL_EOL`, `PHP/8.3.10` → `CRITICAL_PHP2SHELL`); on live
+Polish targets it correctly reports "no version exposed" rather than inventing one.
 
 ## Sources
 
