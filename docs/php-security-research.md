@@ -161,6 +161,12 @@ own domains including a known-PHP app (Shlink at `l.rimaslogic.pl`).
   vulnerability — the version simply isn't on the wire. The exposed population is the misconfigured
   minority (older Apache/mod_php or cPanel shared hosting), which is exactly where real breaches
   cluster.
+- **Detector validated, not broken:** a raw-header spot check confirmed the tool reads live headers
+  correctly — it pulled `Server: nginx` from WordPress.org and `Server: DCSaaS/httpd` /
+  `X-Powered-By: DCSaaS` from small Shoper-hosted shops, and handled Allegro's HTTP 403. The lesson:
+  where `X-Powered-By` survives at all, it now names the **platform** (Shoper's DCSaaS, a CMS, a
+  framework), not `PHP/x.y.z`. The verdict logic itself fires correctly on exposed PHP banners — see
+  the test suite (`PHP/8.1.20` → `CRITICAL_EOL`, `PHP/8.3.10` → `CRITICAL_PHP2SHELL`).
 
 **Content-based cross-check (page HTML/asset URLs) — 10 sites.** Identifies the *stack* even when the
 version is hidden.
