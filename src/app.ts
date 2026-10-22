@@ -18,7 +18,9 @@ This is an open <a href="https://modelcontextprotocol.io">MCP</a> server — no 
 <p>Claude Code: <code>claude mcp add --transport http rimas-logic https://mcp.rimaslogic.pl/mcp</code></p>
 <p>Claude.ai / ChatGPT / Cursor: add a custom connector (remote MCP server) with the URL above.</p>
 <h2>Tools</h2>
-<p><code>list_articles</code> · <code>get_article</code> · <code>search_articles</code> · <code>about_the_ai_logic</code></p>
+<p><code>list_articles</code> · <code>get_article</code> · <code>search_articles</code> · <code>about_the_ai_logic</code> · <code>check_php_security</code></p>
+<p><strong>New:</strong> <code>check_php_security</code> reads a site's public headers and tells you if its PHP looks
+exposed to the October 2026 <em>php2shell</em> RCE or an end-of-life version — with steps to fix it. Passive only.</p>
 <p>Prefer email? <a href="${LINKS.substack}">Subscribe on Substack</a>.
 Work with Rimas: <a href="${LINKS.consult}">book a consultation</a>.</p>
 </body></html>`;
