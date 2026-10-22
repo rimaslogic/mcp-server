@@ -139,24 +139,37 @@ the live web is still on 8.1 or older. That is the recurring, sellable problem.
 
 ---
 
-## Appendix — illustrative scan (2026-10-22)
+## Appendix — scan of Polish company sites (2026-10-22)
 
-A 10-site pass across well-known Polish company homepages (retail, electronics, media, health, NGO),
-reading **public page content only** (no header access in that run), looking for PHP/CMS fingerprints
-in asset URLs and routes:
+Two passes over real, named Polish company homepages, across sectors and sizes (retail, banking,
+energy, logistics, telecom, games, tech media). No probing, homepages only.
 
-- **2 of 10** showed a clear PHP signal — one WordPress (`/wp-content/uploads/` asset paths), one
-  Magento-style storefront (`/customer/account/...` routing). Both are PHP apps and therefore inside
-  php2shell's blast radius; their **patch level could not be seen** from page content.
-- **1 of 10** was bot-blocked (HTTP 403) → indeterminate.
-- **7 of 10** showed no PHP signal — mostly custom/in-house stacks served via CDNs, and one that
-  looked like ASP.NET. "No signal" is **not** proof of safety: a CDN or reverse proxy hides the
-  origin stack, and the PHP version lives in HTTP headers, not the HTML body.
+**Header-based pass (`scripts/scan.mjs`, the real tool logic) — 20 sites.** Reads only the public
+`Server` / `X-Powered-By` / `Set-Cookie` headers and compares any disclosed version against the
+php2shell and end-of-life knowledge base.
 
-**The lesson this proves:** a real vulnerability read needs the response headers (`Server`,
-`X-Powered-By`) or a local `php -v` — exactly what `check_php_security` uses when it runs from an
-environment with outbound access (the deployed server, or `scripts/scan.mjs` on a trusted machine).
-Content-only fingerprinting can tell you *whether* a site is PHP, not *whether it is patched*.
+- **0 of 20 disclosed a PHP version** in their headers. All returned `UNKNOWN_NO_PHP` (one fetch
+  failed). Large firms and modern CMS hosts consistently sit behind CDNs/reverse proxies that strip
+  `X-Powered-By`, or run with `expose_php = Off`.
+- Net: for well-configured sites, an **external banner check cannot confirm vulnerability** — and it
+  cannot confirm safety either. The version simply isn't exposed.
+
+**Content-based cross-check (page HTML/asset URLs) — 10 sites.** Identifies the *stack* even when the
+version is hidden.
+
+- **2 of 10** were clearly PHP apps — one WordPress (`/wp-content/uploads/`), one Magento-style
+  storefront (`/customer/account/...`). Both are inside php2shell's blast radius; patch level unknown
+  from outside.
+- **7 of 10** showed no PHP signal (custom/in-house stacks via CDNs; one looked like ASP.NET);
+  **1** was bot-blocked.
+
+**What this actually proves (the sellable insight):** the external scan's hit-rate is low *because
+responsible sites hide the banner* — so the real risk lives where you cannot see it from outside:
+on the origin, and disproportionately on smaller/older sites that still leak `X-Powered-By`. The only
+way to *know* is to read the version where it lives — response headers from an environment with
+outbound access, or `php -v` on the box. That is the `check_php_security` design, and the reason the
+honest product motion is "run it on your own site / let us check it for you", not "we scanned you and
+you're exposed."
 
 ## Sources
 
