@@ -18,6 +18,7 @@ export interface Corpus {
 
 const td = new TurndownService({ headingStyle: "atx" });
 const PAGE = 50;
+const MAX_PAGES = 100;
 
 interface RawPost {
   title?: string;
@@ -51,14 +52,20 @@ export class SubstackSource {
     private now: () => number = Date.now,
   ) {}
 
+  // Substack's /api/v1/posts pages with `cursor` + `nextCursor` (it rejects `offset`
+  // since late 2026). A bare array is still accepted as a single, un-paged response.
   private async fetchAll(): Promise<Article[]> {
     const raw: RawPost[] = [];
-    for (let offset = 0; ; offset += PAGE) {
-      const res = await this.fetchFn(`${this.baseUrl}/api/v1/posts?limit=${PAGE}&offset=${offset}`);
+    let cursor: string | null = null;
+    for (let page = 0; page < MAX_PAGES; page++) {
+      const q: string = cursor ? `&cursor=${encodeURIComponent(cursor)}` : "";
+      const res = await this.fetchFn(`${this.baseUrl}/api/v1/posts?limit=${PAGE}${q}`);
       if (!res.ok) throw new Error(`Substack API returned ${res.status}`);
-      const batch = (await res.json()) as RawPost[];
-      raw.push(...batch);
-      if (batch.length < PAGE) break;
+      const body = (await res.json()) as RawPost[] | { posts: RawPost[]; nextCursor?: string | null };
+      if (Array.isArray(body)) { raw.push(...body); break; }
+      raw.push(...body.posts);
+      cursor = body.nextCursor ?? null;
+      if (!cursor || body.posts.length === 0) break;
     }
     return raw.map(toArticle);
   }
