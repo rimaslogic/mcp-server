@@ -44,16 +44,21 @@ describe("SubstackSource", () => {
     await expect(cold.getCorpus()).rejects.toThrow();
   });
 
-  it("paginates until a short page", async () => {
-    const page = (n: number) => Array.from({ length: n }, (_, i) => ({ ...posts[0], slug: `s${i}` }));
-    let call = 0;
+  it("follows nextCursor until it is null", async () => {
+    const page = (n: number, from: number) => Array.from({ length: n }, (_, i) => ({ ...posts[0], slug: `s${from + i}` }));
+    const urls: string[] = [];
     const f: typeof fetch = (async (url: any) => {
-      call++;
-      return new Response(JSON.stringify(String(url).includes("offset=0") ? page(50) : page(2)));
+      urls.push(String(url));
+      const body = String(url).includes("cursor=")
+        ? { posts: page(2, 50), nextCursor: null }
+        : { posts: page(50, 0), nextCursor: "abc=" };
+      return new Response(JSON.stringify(body));
     }) as typeof fetch;
     const s = new SubstackSource("https://x", 600_000, f);
     const { articles } = await s.getCorpus();
-    expect(call).toBe(2);
+    expect(urls.length).toBe(2);
+    expect(urls[0]).not.toContain("offset");
+    expect(urls[1]).toContain("cursor=abc%3D");
     expect(articles.length).toBe(52);
   });
 });
